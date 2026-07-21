@@ -91,12 +91,27 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <header class="bg-indigo-600 text-white p-4 shadow-md relative">
-        <div class="container mx-auto text-center flex justify-center relative items-center">
-            <h1 id="t-headerTitle" class="text-2xl font-bold">Memory de Llibres de la Bíblia</h1>
+    <header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-[100]">
+        <div class="container mx-auto text-center flex justify-center items-center relative">
+            
+            <!-- Botons d'Inici i Reiniciar (Esquerra) -->
+            <div class="absolute left-0 flex space-x-1 md:space-x-2">
+                <button onclick="requestAction('home')" class="flex items-center justify-center p-1.5 md:p-2 rounded-lg bg-indigo-500 hover:bg-indigo-700 border border-indigo-400 transition shadow-sm text-white focus:outline-none" title="Tornar a l'inici">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                </button>
+                <button id="restart-btn" onclick="requestAction('restart')" class="hidden flex items-center justify-center p-1.5 md:p-2 rounded-lg bg-indigo-500 hover:bg-indigo-700 border border-indigo-400 transition shadow-sm text-white focus:outline-none" title="Reiniciar partida actual">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <h1 id="t-headerTitle" class="text-xl md:text-2xl font-bold px-16 md:px-24">Memory de Llibres de la Bíblia</h1>
             
             <!-- Selector d'idioma Global -->
-            <div class="absolute right-0 top-1/2 transform -translate-y-1/2 text-left mr-4">
+            <div class="absolute right-0 text-left z-[110]">
                 <button id="lang-btn-global" onclick="toggleLangMenuGlobal()" class="flex items-center space-x-2 bg-indigo-500 hover:bg-indigo-700 text-white border border-indigo-400 py-1 px-2 md:py-1.5 md:px-3 rounded-lg transition text-xs md:text-sm shadow-sm focus:outline-none">
                     <span id="current-flag-icon-global" class="w-5 h-4 block overflow-hidden rounded-sm">
                         <!-- Default flag CA -->
@@ -164,31 +179,35 @@
         </div>
 
         <!-- Pantalla de Joc -->
-        <div id="game-screen" class="w-full max-w-4xl flex flex-col gap-6">
-            <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
-                <h3 class="text-xl font-bold text-gray-700"><span id="t-modePrefix">Mode: </span><span id="mode-title-text"></span></h3>
-                <span class="text-gray-500 font-medium"><span id="t-booksLeft">Llibres restants: </span><span id="books-left">0</span></span>
+        <div id="game-screen" class="w-full max-w-6xl flex flex-col gap-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm z-20 sticky top-0 md:static">
+                <h3 class="text-lg md:text-xl font-bold text-gray-700"><span id="t-modePrefix">Mode: </span><span id="mode-title-text"></span></h3>
+                <span class="text-gray-500 font-medium text-sm md:text-base"><span id="t-booksLeft">Llibres restants: </span><span id="books-left">0</span></span>
             </div>
 
-            <div class="flex flex-col md:flex-row gap-6">
-                <!-- Zona del "Deck" d'on surten els llibres -->
-                <div class="md:w-1/3 bg-white rounded-xl shadow-md p-4 flex flex-col items-center">
-                    <h4 id="t-bookToPlace" class="font-semibold text-gray-600 mb-4 border-b pb-2 w-full text-center">Llibre(s) a col·locar</h4>
-                    <div id="deck-zone" class="w-full flex-grow flex flex-wrap content-start gap-2 p-3 min-h-[150px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 overflow-y-auto max-h-[60vh]">
+            <div class="flex flex-col md:flex-row gap-6 items-start relative">
+                <!-- Zona del "Deck" d'on surten els llibres - ARA STICKY I INDEPENDENT -->
+                <div class="w-full md:w-1/3 bg-white rounded-xl shadow-md flex flex-col md:sticky md:top-20 z-10" style="max-height: calc(100vh - 120px);">
+                    <div class="p-4 border-b">
+                        <h4 id="t-bookToPlace" class="font-semibold text-gray-600 text-center">Llibre(s) a col·locar</h4>
+                    </div>
+                    
+                    <!-- Contenidor amb scroll independent per a les targetes -->
+                    <div id="deck-zone" class="w-full flex-grow flex flex-col gap-2 p-3 bg-gray-50 overflow-y-auto" style="min-height: 150px;">
                         <!-- El/Els llibre(s) actual(s) apareixeran aquí -->
                     </div>
                 </div>
 
                 <!-- Zona d'ordenació on es posen els llibres -->
-                <div class="md:w-2/3 bg-white rounded-xl shadow-md p-4 flex flex-col">
+                <div class="w-full md:w-2/3 bg-white rounded-xl shadow-md p-4 flex flex-col">
                     <h4 id="t-sortHere" class="font-semibold text-gray-600 mb-4 border-b pb-2 w-full text-center">Ordena aquí els llibres</h4>
-                    <div id="sortable-zone" class="flex-grow flex flex-col p-2 rounded-lg min-h-[300px]">
+                    <div id="sortable-zone" class="flex-grow flex flex-col rounded-lg min-h-[300px]">
                         <!-- Els requadres es generaran aquí dinàmicament per categories -->
                     </div>
                 </div>
             </div>
 
-            <div class="flex justify-center mt-4">
+            <div class="flex justify-center mt-4 mb-10 md:mb-0">
                  <button id="submit-btn" onclick="checkOrder()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
                     Enviar Resposta
                 </button>
@@ -214,12 +233,27 @@
                 </ul>
             </div>
 
-            <button id="t-playAgain" onclick="resetGame()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
+            <button id="t-playAgain" onclick="goHome()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
                 Tornar a jugar
             </button>
         </div>
 
     </main>
+
+    <!-- Modal de Confirmació Personalitzat per prevenir pèrdua de progrés -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/60 z-[200] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl max-w-sm w-full mx-4 text-center transform transition-all">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-xl font-bold mb-2 text-gray-800" id="t-modalTitle">Atenció</h3>
+            <p class="text-gray-600 mb-6 text-sm md:text-base" id="t-modalDesc">Segur que vols abandonar la partida? Perdràs el progrés actual.</p>
+            <div class="flex justify-center space-x-3">
+                <button onclick="closeModal()" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg transition" id="t-modalCancel">Cancel·lar</button>
+                <button onclick="executeModalAction()" class="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-md" id="t-modalConfirm">D'acord</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const i18n = {
@@ -256,6 +290,10 @@
                 catGospelsActs: "Evangelis i Fets",
                 catEpistles: "Cartes (Epístoles)",
                 catRevelation: "Apocalipsi",
+                modalTitle: "Atenció",
+                modalDesc: "Segur que vols abandonar la partida? Perdràs el progrés actual.",
+                modalCancel: "Cancel·lar",
+                modalConfirm: "D'acord",
                 at: [
                     "Gènesi", "Èxode", "Levític", "Nombres", "Deuteronomi", "Josuè", "Jutges", "Rut", "1 Samuel", "2 Samuel",
                     "1 Reis", "2 Reis", "1 Cròniques", "2 Cròniques", "Esdres", "Nehemies", "Ester", "Job", "Salms", "Proverbis",
@@ -301,6 +339,10 @@
                 catGospelsActs: "Evangelios y Hechos",
                 catEpistles: "Cartas (Epístolas)",
                 catRevelation: "Apocalipsis",
+                modalTitle: "Atención",
+                modalDesc: "¿Seguro que quieres abandonar la partida? Perderás el progreso actual.",
+                modalCancel: "Cancelar",
+                modalConfirm: "Continuar",
                 at: [
                     "Génesis", "Éxodo", "Levítico", "Números", "Deuteronomio", "Josué", "Jueces", "Rut", "1 Samuel", "2 Samuel",
                     "1 Reyes", "2 Reyes", "1 Crónicas", "2 Crónicas", "Esdras", "Nehemías", "Ester", "Job", "Salmos", "Proverbios",
@@ -346,6 +388,10 @@
                 catGospelsActs: "Gospels & Acts",
                 catEpistles: "Epistles",
                 catRevelation: "Revelation",
+                modalTitle: "Attention",
+                modalDesc: "Are you sure you want to leave the game? Your current progress will be lost.",
+                modalCancel: "Cancel",
+                modalConfirm: "Leave",
                 at: [
                     "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel",
                     "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra", "Nehemiah", "Esther", "Job", "Psalms", "Proverbs",
@@ -372,6 +418,9 @@
         let llibreActual = null;  // El llibre que està actualment a la zona de "deck" (si anem un a un)
         let absoluteBookIndex = 0; // Comptador per numerar els requadres buits
         let isAllAtOnce = false;  // Variable global per saber l'estat del toggle
+        let currentGameMode = null; // Guardar el mode de joc actual per poder reiniciar
+        let isGameActive = false; // Control per saber si avisar abans de sortir
+        let selectedCard = null; // Targeta seleccionada per a la mecànica de clic/tap
 
         const canonStructure = {
             at: [
@@ -435,6 +484,12 @@
             document.getElementById('t-toggleOneByOne').textContent = texts.toggleOneByOne;
             document.getElementById('t-toggleAll').textContent = texts.toggleAll;
             document.getElementById('t-practiceCategories').textContent = texts.practiceCategories;
+
+            // Textos del Modal
+            document.getElementById('t-modalTitle').textContent = texts.modalTitle;
+            document.getElementById('t-modalDesc').textContent = texts.modalDesc;
+            document.getElementById('t-modalCancel').textContent = texts.modalCancel;
+            document.getElementById('t-modalConfirm').textContent = texts.modalConfirm;
 
             // Actualitzar botons de categories inferiors
             const categoryBtns = document.querySelectorAll('[data-i18n-btn]');
@@ -510,11 +565,15 @@
 
             } else {
                 // Si estem al start-screen no cal traduir llibres en joc
-                resetGame();
+                goHome();
             }
         }
 
         function startGame(mode) {
+            currentGameMode = mode;
+            isGameActive = true;
+            document.getElementById('restart-btn').classList.remove('hidden');
+
             const texts = i18n[currentLanguage];
             let modeText = "";
             let structureToUse = [];
@@ -630,8 +689,8 @@
 
         function crearTargetaLlibre(llibreNom) {
             const bookCard = document.createElement('div');
-            // Eliminem l'h-full i w-full en línia per controlar-ho millor per CSS depenent d'on estigui
-            bookCard.className = 'draggable bg-gradient-to-br from-indigo-100 to-blue-50 border border-indigo-300 text-indigo-900 font-bold rounded shadow-sm hover:shadow-md transition-shadow animate-fade-in card-content cursor-grab active:cursor-grabbing relative flex items-center justify-center p-1.5';
+            // Els estils aquí ara fan que al deck s'adaptin a l'amplada i alçada necessària
+            bookCard.className = 'draggable bg-gradient-to-br from-indigo-100 to-blue-50 border border-indigo-300 text-indigo-900 font-bold rounded shadow-sm hover:shadow-md transition-all animate-fade-in card-content cursor-grab active:cursor-grabbing relative flex items-center justify-center p-1.5 w-full';
             bookCard.setAttribute('draggable', 'true');
             bookCard.dataset.name = llibreNom;
             
@@ -642,6 +701,7 @@
             bookCard.appendChild(textSpan);
             
             addDragEvents(bookCard);
+            addClickEvents(bookCard); // Nova mecànica per dispositius tàctils
             return bookCard;
         }
 
@@ -698,6 +758,53 @@
             });
         }
 
+        /* Mecànica de Clic / Tap per a Mòbils i Ratolí */
+        function addClickEvents(item) {
+            item.addEventListener('click', function(e) {
+                e.stopPropagation(); // Evitar que es dispari el clic del contenidor (slot)
+                
+                if (selectedCard === this) {
+                    deselectCard();
+                } else if (!selectedCard) {
+                    selectCard(this);
+                } else {
+                    swapCards(selectedCard, this);
+                    deselectCard();
+                    comprovarTotsColocats();
+                }
+            });
+        }
+
+        function selectCard(card) {
+            if (selectedCard) deselectCard();
+            selectedCard = card;
+            // Destacar la targeta seleccionada amb una vora groga
+            card.classList.add('ring-4', 'ring-yellow-400', 'scale-105', 'z-50');
+        }
+
+        function deselectCard() {
+            if (selectedCard) {
+                selectedCard.classList.remove('ring-4', 'ring-yellow-400', 'scale-105', 'z-50');
+                selectedCard = null;
+            }
+        }
+
+        function swapCards(card1, card2) {
+            const parent1 = card1.parentNode;
+            const sibling1 = card1.nextSibling === card2 ? card1 : card1.nextSibling;
+            const parent2 = card2.parentNode;
+            const sibling2 = card2.nextSibling === card1 ? card2 : card2.nextSibling;
+            
+            parent1.insertBefore(card2, sibling1);
+            parent2.insertBefore(card1, sibling2);
+            
+            // Actualitzacions específiques per a mode un a un
+            if (!isAllAtOnce) {
+                if (parent1.id === 'deck-zone') llibreActual = card2;
+                if (parent2.id === 'deck-zone') llibreActual = card1;
+            }
+        }
+
         function setupSlotEvents(slot) {
             slot.addEventListener('dragover', function(e) {
                 e.preventDefault(); 
@@ -707,6 +814,29 @@
 
             slot.addEventListener('dragleave', function(e) {
                 this.classList.remove('drag-over');
+            });
+
+            // Afegir funcionalitat de clic als espais buits
+            slot.addEventListener('click', function(e) {
+                if (selectedCard) {
+                    const existingBook = this.querySelector('.draggable');
+                    if (existingBook) {
+                        // Si l'espai està ocupat, els intercanviem
+                        swapCards(selectedCard, existingBook);
+                    } else {
+                        // Si està buit, el movem
+                        const wasInDeck = selectedCard.parentElement.id === 'deck-zone';
+                        this.appendChild(selectedCard);
+                        
+                        // Si venia del deck i anem un a un, robem carta
+                        if (wasInDeck && !isAllAtOnce) {
+                            llibreActual = null;
+                            setTimeout(() => treureNouLlibre(), 50);
+                        }
+                    }
+                    deselectCard();
+                    comprovarTotsColocats();
+                }
             });
 
             slot.addEventListener('drop', function(e) {
@@ -754,6 +884,23 @@
 
         deckZone.addEventListener('dragleave', function(e) {
             this.classList.remove('bg-gray-200');
+        });
+
+        deckZone.addEventListener('click', function(e) {
+            if (selectedCard && selectedCard.parentElement !== this) {
+                if (isAllAtOnce) {
+                    this.appendChild(selectedCard);
+                } else {
+                    const existingBook = this.querySelector('.draggable');
+                    if (existingBook) {
+                        selectedCard.parentElement.appendChild(existingBook);
+                    }
+                    this.appendChild(selectedCard);
+                    llibreActual = selectedCard;
+                }
+                deselectCard();
+                comprovarTotsColocats();
+            }
         });
 
         deckZone.addEventListener('drop', function(e) {
@@ -857,14 +1004,55 @@
             gameScreen.style.display = 'none';
             resultScreen.style.display = 'block';
             resultScreen.classList.add('animate-fade-in');
+            
+            isGameActive = false;
+            document.getElementById('restart-btn').classList.add('hidden');
         }
 
-        function resetGame() {
+        /* Lògica per a tornar enrere / avisos de pèrdua de dades */
+        let pendingAction = null;
+
+        function requestAction(actionType) {
+            if (!isGameActive) {
+                if (actionType === 'home') goHome();
+                return;
+            }
+            pendingAction = actionType;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        function executeModalAction() {
+            closeModal();
+            if (pendingAction === 'home') goHome();
+            if (pendingAction === 'restart') {
+                isGameActive = false; // Desactivar momentàniament per permetre el reinici
+                startGame(currentGameMode);
+            }
+            pendingAction = null;
+        }
+
+        function goHome() {
             resultScreen.style.display = 'none';
             gameScreen.style.display = 'none';
             startScreen.style.display = 'block';
             startScreen.classList.add('animate-fade-in');
+            isGameActive = false;
+            currentGameMode = null;
+            document.getElementById('restart-btn').classList.add('hidden');
         }
+
+        // Avís del navegador al recarregar la pàgina de cop (F5)
+        window.addEventListener('beforeunload', function (e) {
+            if (isGameActive) {
+                const msg = "Segur que vols sortir? Perdràs el progrés actual.";
+                e.returnValue = msg;
+                return msg;
+            }
+        });
 
     </script>
 </body>
