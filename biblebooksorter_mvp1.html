@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory de Llibres de la Bíblia</title>
+    <!-- Incloent Tailwind CSS per l'estil ràpid -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Gris clar fons */
+        }
+        
+        .draggable {
+            cursor: grab;
+        }
+        
+        .draggable:active {
+            cursor: grabbing;
+        }
+
+        .dragging {
+            opacity: 0.5;
+        }
+
+        .sortable-list {
+            min-height: 100px; /* Assegurar que la llista tingui alçada encara que estigui buida */
+        }
+
+        .slot {
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .slot.drag-over {
+            background-color: #e5e7eb;
+            border-color: #4f46e5; /* Indigo-600 */
+            transform: scale(1.03);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+        .slot-number {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 0.65rem;
+            color: #9ca3af;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* Ajustos per a la targeta perquè no s'estiri verticalment */
+        .card-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.85rem;
+            line-height: 1.2;
+            z-index: 10;
+        }
+
+        /* Quan la targeta està dins d'un requadre al tauler de joc, ocupa 100% */
+        .slot .draggable {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Quan la targeta està a la baralla/columna de l'esquerra, ocupa tot l'ample però té alçada petita */
+        #deck-zone .draggable {
+            width: 100%;
+            min-height: 3.5rem;
+            height: max-content;
+        }
+
+        /* Amagar inicialment algunes pantalles */
+        #game-screen, #result-screen {
+            display: none;
+        }
+
+        /* Animacions per les targetes */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="bg-indigo-600 text-white p-4 shadow-md relative">
+        <div class="container mx-auto text-center flex justify-center relative items-center">
+            <h1 id="t-headerTitle" class="text-2xl font-bold">Memory de Llibres de la Bíblia</h1>
+            
+            <!-- Selector d'idioma Global -->
+            <div class="absolute right-0 top-1/2 transform -translate-y-1/2 text-left mr-4">
+                <button id="lang-btn-global" onclick="toggleLangMenuGlobal()" class="flex items-center space-x-2 bg-indigo-500 hover:bg-indigo-700 text-white border border-indigo-400 py-1 px-2 md:py-1.5 md:px-3 rounded-lg transition text-xs md:text-sm shadow-sm focus:outline-none">
+                    <span id="current-flag-icon-global" class="w-5 h-4 block overflow-hidden rounded-sm">
+                        <!-- Default flag CA -->
+                        <svg viewBox="0 0 900 600" class="w-full h-full object-cover"><rect width="900" height="600" fill="#ffc400"/><g fill="#da121a"><rect y="66.6" width="900" height="66.6"/><rect y="200" width="900" height="66.6"/><rect y="333.3" width="900" height="66.6"/><rect y="466.6" width="900" height="66.6"/></g></svg>
+                    </span>
+                    <span id="current-lang-code-global" class="font-semibold uppercase hidden md:inline">CA</span>
+                    <svg class="w-4 h-4 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                
+                <div id="lang-menu-global" class="hidden absolute right-0 mt-2 w-36 bg-white rounded-lg shadow-xl z-50 border border-gray-100 overflow-hidden">
+                    <a href="#" onclick="changeLang('ca'); return false;" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">
+                        <span class="w-5 h-4 mr-3 inline-block overflow-hidden rounded-sm"><svg viewBox="0 0 900 600" class="w-full h-full object-cover"><rect width="900" height="600" fill="#ffc400"/><g fill="#da121a"><rect y="66.6" width="900" height="66.6"/><rect y="200" width="900" height="66.6"/><rect y="333.3" width="900" height="66.6"/><rect y="466.6" width="900" height="66.6"/></g></svg></span> Català
+                    </a>
+                    <a href="#" onclick="changeLang('es'); return false;" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">
+                        <span class="w-5 h-4 mr-3 inline-block overflow-hidden rounded-sm"><svg viewBox="0 0 750 500" class="w-full h-full object-cover"><rect width="750" height="500" fill="#c60b1e"/><rect y="125" width="750" height="250" fill="#ffc400"/></svg></span> Español
+                    </a>
+                    <a href="#" onclick="changeLang('en'); return false;" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">
+                        <span class="w-5 h-4 mr-3 inline-block overflow-hidden rounded-sm"><svg viewBox="0 0 60 30" class="w-full h-full object-cover"><clipPath id="s"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="t"><path d="M30,15 h30 v15 z v-15 h-30 z h-30 v-15 z v15 h30 z"/></clipPath><g clip-path="url(#s)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#t)" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></g></svg></span> English
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 flex flex-col items-center justify-center">
+
+        <!-- Pantalla d'Inici -->
+        <div id="start-screen" class="w-full max-w-md bg-white rounded-xl shadow-lg p-8 text-center animate-fade-in relative">
+            
+            <h2 id="t-welcome" class="text-3xl font-extrabold text-gray-800 mb-6 mt-4">Benvingut al Memory!</h2>
+            <p id="t-desc" class="text-gray-600 mb-8">Posa a prova el teu coneixement ordenant els llibres de la Bíblia.</p>
+            
+            <div class="mb-6 flex items-center justify-center space-x-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <span class="text-gray-600 font-medium text-sm" id="t-toggleOneByOne">Un a un</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="mode-toggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-indigo-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+                <span class="text-gray-600 font-medium text-sm" id="t-toggleAll">Tots alhora</span>
+            </div>
+
+            <div class="space-y-3">
+                <button id="t-btnAT" onclick="startGame('at')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 shadow-md">
+                    Antic Testament
+                </button>
+                <button id="t-btnNT" onclick="startGame('nt')" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 shadow-md">
+                    Nou Testament
+                </button>
+                <button id="t-btnAll" onclick="startGame('all')" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 shadow-md">
+                    Tota la Bíblia
+                </button>
+            </div>
+            
+            <div class="mt-8 border-t border-gray-200 pt-6">
+                <h3 id="t-practiceCategories" class="text-xs font-bold text-gray-400 mb-4 uppercase tracking-wider text-left">Pràctica per categories:</h3>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <button onclick="startGame('catPentateuch')" class="bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 py-2 px-2 rounded shadow-sm transition font-medium" data-i18n-btn="catPentateuch">Pentateuc</button>
+                    <button onclick="startGame('catHistoricalOT')" class="bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 py-2 px-2 rounded shadow-sm transition font-medium" data-i18n-btn="catHistoricalOT">Històrics (AT)</button>
+                    <button onclick="startGame('catPoetic')" class="bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 py-2 px-2 rounded shadow-sm transition font-medium" data-i18n-btn="catPoetic">Poètics i Sapiencials</button>
+                    <button onclick="startGame('catProphets')" class="bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 py-2 px-2 rounded shadow-sm transition font-medium" data-i18n-btn="catProphets">Profetes</button>
+                    <button onclick="startGame('catGospelsActs')" class="bg-white hover:bg-green-50 text-green-700 border border-green-200 py-2 px-2 rounded shadow-sm transition font-medium" data-i18n-btn="catGospelsActs">Evangelis i Fets</button>
+                    <button onclick="startGame('catEpistles')" class="bg-white hover:bg-green-50 text-green-700 border border-green-200 py-2 px-2 rounded shadow-sm transition font-medium" data-i18n-btn="catEpistles">Cartes (Epístoles)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Joc -->
+        <div id="game-screen" class="w-full max-w-4xl flex flex-col gap-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
+                <h3 class="text-xl font-bold text-gray-700"><span id="t-modePrefix">Mode: </span><span id="mode-title-text"></span></h3>
+                <span class="text-gray-500 font-medium"><span id="t-booksLeft">Llibres restants: </span><span id="books-left">0</span></span>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Zona del "Deck" d'on surten els llibres -->
+                <div class="md:w-1/3 bg-white rounded-xl shadow-md p-4 flex flex-col items-center">
+                    <h4 id="t-bookToPlace" class="font-semibold text-gray-600 mb-4 border-b pb-2 w-full text-center">Llibre(s) a col·locar</h4>
+                    <div id="deck-zone" class="w-full flex-grow flex flex-wrap content-start gap-2 p-3 min-h-[150px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 overflow-y-auto max-h-[60vh]">
+                        <!-- El/Els llibre(s) actual(s) apareixeran aquí -->
+                    </div>
+                </div>
+
+                <!-- Zona d'ordenació on es posen els llibres -->
+                <div class="md:w-2/3 bg-white rounded-xl shadow-md p-4 flex flex-col">
+                    <h4 id="t-sortHere" class="font-semibold text-gray-600 mb-4 border-b pb-2 w-full text-center">Ordena aquí els llibres</h4>
+                    <div id="sortable-zone" class="flex-grow flex flex-col p-2 rounded-lg min-h-[300px]">
+                        <!-- Els requadres es generaran aquí dinàmicament per categories -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-center mt-4">
+                 <button id="submit-btn" onclick="checkOrder()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Enviar Resposta
+                </button>
+            </div>
+        </div>
+
+        <!-- Pantalla de Resultats -->
+        <div id="result-screen" class="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 text-center mt-8">
+            <h2 id="t-results" class="text-3xl font-extrabold text-gray-800 mb-4">Resultats</h2>
+            
+            <div id="score-container" class="mb-6">
+                <div class="inline-block bg-indigo-100 rounded-full p-6 border-4 border-indigo-500">
+                    <span id="score-text" class="text-4xl font-black text-indigo-700">0/0</span>
+                </div>
+            </div>
+            
+            <p id="feedback-message" class="text-xl mb-6 font-medium"></p>
+            
+            <div id="detailed-results" class="text-left bg-gray-50 p-4 rounded-lg overflow-y-auto max-h-60 mb-6 border border-gray-200">
+                <h4 id="t-details" class="font-bold text-gray-700 mb-2 sticky top-0 bg-gray-50 pb-2 border-b">Detall del teu ordre:</h4>
+                <ul id="result-list" class="space-y-1">
+                    <!-- Es generarà dinàmicament -->
+                </ul>
+            </div>
+
+            <button id="t-playAgain" onclick="resetGame()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
+                Tornar a jugar
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        const i18n = {
+            ca: {
+                headerTitle: "Memory de Llibres de la Bíblia",
+                welcome: "Benvingut al Memory!",
+                desc: "Posa a prova el teu coneixement ordenant els llibres de la Bíblia.",
+                btnAT: "Antic Testament",
+                btnNT: "Nou Testament",
+                btnAll: "Tota la Bíblia",
+                modePrefix: "Mode: ",
+                booksLeft: "Llibres restants: ",
+                bookToPlace: "Llibre(s) a col·locar",
+                sortHere: "Ordena aquí els llibres",
+                submit: "Enviar Resposta",
+                results: "Resultats",
+                details: "Detall del teu ordre:",
+                playAgain: "Tornar a jugar",
+                noMoreBooks: "No queden més llibres",
+                missing: "Falta col·locar",
+                shouldBe: "Havia de ser:",
+                correct: "✓ Correcte",
+                fbPerfect: "Perfecte! Els coneixes tots al detall.",
+                fbGood: "Molt bé! Et saps la majoria.",
+                fbOk: "Bé, però encara has de repassar una mica més.",
+                fbBad: "Ànims! Toca estudiar l'índex de la Bíblia.",
+                toggleOneByOne: "Un a un",
+                toggleAll: "Tots alhora",
+                practiceCategories: "Pràctica per categories:",
+                catPentateuch: "Pentateuc",
+                catHistoricalOT: "Històrics (AT)",
+                catPoetic: "Poètics i Sapiencials",
+                catProphets: "Profetes",
+                catGospelsActs: "Evangelis i Fets",
+                catEpistles: "Cartes (Epístoles)",
+                catRevelation: "Apocalipsi",
+                at: [
+                    "Gènesi", "Èxode", "Levític", "Nombres", "Deuteronomi", "Josuè", "Jutges", "Rut", "1 Samuel", "2 Samuel",
+                    "1 Reis", "2 Reis", "1 Cròniques", "2 Cròniques", "Esdres", "Nehemies", "Ester", "Job", "Salms", "Proverbis",
+                    "Eclesiastès", "Càntic dels Càntics", "Isaïes", "Jeremies", "Lamentacions", "Ezequiel", "Daniel", "Osees", "Joel", "Amós",
+                    "Abdies", "Jonàs", "Miquees", "Nahum", "Habacuc", "Sofonies", "Ageu", "Zacaries", "Malaquies"
+                ],
+                nt: [
+                    "Mateu", "Marc", "Lluc", "Joan", "Fets dels Apòstols", "Romans", "1 Corintis", "2 Corintis", "Gàlates", "Efesis",
+                    "Filipencs", "Colossencs", "1 Tessalonicencs", "2 Tessalonicencs", "1 Timoteu", "2 Timoteu", "Titus", "Filemó", "Hebreus", "Jaume",
+                    "1 Pere", "2 Pere", "1 Joan", "2 Joan", "3 Joan", "Judes", "Apocalipsi"
+                ]
+            },
+            es: {
+                headerTitle: "Memory de Libros de la Biblia",
+                welcome: "¡Bienvenido al Memory!",
+                desc: "Pon a prueba tu conocimiento ordenando los libros de la Biblia.",
+                btnAT: "Antiguo Testamento",
+                btnNT: "Nuevo Testamento",
+                btnAll: "Toda la Biblia",
+                modePrefix: "Modo: ",
+                booksLeft: "Libros restantes: ",
+                bookToPlace: "Libro(s) a colocar",
+                sortHere: "Ordena aquí los libros",
+                submit: "Enviar Respuesta",
+                results: "Resultados",
+                details: "Detalle de tu orden:",
+                playAgain: "Volver a jugar",
+                noMoreBooks: "No quedan más libros",
+                missing: "Falta colocar",
+                shouldBe: "Debía ser:",
+                correct: "✓ Correcto",
+                fbPerfect: "¡Perfecto! Los conoces todos al detalle.",
+                fbGood: "¡Muy bien! Te sabes la mayoría.",
+                fbOk: "Bien, pero aún tienes que repasar un poco más.",
+                fbBad: "¡Ánimo! Toca estudiar el índice de la Biblia.",
+                toggleOneByOne: "Uno a uno",
+                toggleAll: "Todos a la vez",
+                practiceCategories: "Práctica por categorías:",
+                catPentateuch: "Pentateuco",
+                catHistoricalOT: "Históricos (AT)",
+                catPoetic: "Poéticos y Sapienciales",
+                catProphets: "Profetas",
+                catGospelsActs: "Evangelios y Hechos",
+                catEpistles: "Cartas (Epístolas)",
+                catRevelation: "Apocalipsis",
+                at: [
+                    "Génesis", "Éxodo", "Levítico", "Números", "Deuteronomio", "Josué", "Jueces", "Rut", "1 Samuel", "2 Samuel",
+                    "1 Reyes", "2 Reyes", "1 Crónicas", "2 Crónicas", "Esdras", "Nehemías", "Ester", "Job", "Salmos", "Proverbios",
+                    "Eclesiastés", "Cantares", "Isaías", "Jeremías", "Lamentaciones", "Ezequiel", "Daniel", "Oseas", "Joel", "Amós",
+                    "Abdías", "Jonás", "Miqueas", "Nahúm", "Habacuc", "Sofonías", "Hageo", "Zacarías", "Malaquías"
+                ],
+                nt: [
+                    "Mateo", "Marcos", "Lucas", "Juan", "Hechos", "Romanos", "1 Corintios", "2 Corintios", "Gálatas", "Efesios",
+                    "Filipenses", "Colosenses", "1 Tesalonicenses", "2 Tesalonicenses", "1 Timoteo", "2 Timoteo", "Tito", "Filemón", "Hebreos", "Santiago",
+                    "1 Pedro", "2 Pedro", "1 Juan", "2 Juan", "3 Juan", "Judas", "Apocalipsis"
+                ]
+            },
+            en: {
+                headerTitle: "Bible Books Memory",
+                welcome: "Welcome to Memory!",
+                desc: "Test your knowledge by ordering the books of the Bible.",
+                btnAT: "Old Testament",
+                btnNT: "New Testament",
+                btnAll: "The Whole Bible",
+                modePrefix: "Mode: ",
+                booksLeft: "Books left: ",
+                bookToPlace: "Book(s) to place",
+                sortHere: "Sort the books here",
+                submit: "Submit Answer",
+                results: "Results",
+                details: "Order details:",
+                playAgain: "Play again",
+                noMoreBooks: "No more books left",
+                missing: "Missing",
+                shouldBe: "Should be:",
+                correct: "✓ Correct",
+                fbPerfect: "Perfect! You know them all in detail.",
+                fbGood: "Very good! You know most of them.",
+                fbOk: "Good, but you still need to review a bit more.",
+                fbBad: "Cheer up! Time to study the Bible index.",
+                toggleOneByOne: "One by one",
+                toggleAll: "All at once",
+                practiceCategories: "Practice by categories:",
+                catPentateuch: "Pentateuch",
+                catHistoricalOT: "Historical (OT)",
+                catPoetic: "Poetic & Wisdom",
+                catProphets: "Prophets",
+                catGospelsActs: "Gospels & Acts",
+                catEpistles: "Epistles",
+                catRevelation: "Revelation",
+                at: [
+                    "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel",
+                    "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra", "Nehemiah", "Esther", "Job", "Psalms", "Proverbs",
+                    "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations", "Ezekiel", "Daniel", "Hosea", "Joel", "Amos",
+                    "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi"
+                ],
+                nt: [
+                    "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians",
+                    "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon", "Hebrews", "James",
+                    "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude", "Revelation"
+                ]
+            }
+        };
+
+        const flags = {
+            ca: '<svg viewBox="0 0 900 600" class="w-full h-full object-cover"><rect width="900" height="600" fill="#ffc400"/><g fill="#da121a"><rect y="66.6" width="900" height="66.6"/><rect y="200" width="900" height="66.6"/><rect y="333.3" width="900" height="66.6"/><rect y="466.6" width="900" height="66.6"/></g></svg>',
+            es: '<svg viewBox="0 0 750 500" class="w-full h-full object-cover"><rect width="750" height="500" fill="#c60b1e"/><rect y="125" width="750" height="250" fill="#ffc400"/></svg>',
+            en: '<svg viewBox="0 0 60 30" class="w-full h-full object-cover"><clipPath id="s"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="t"><path d="M30,15 h30 v15 z v-15 h-30 z h-30 v-15 z v15 h30 z"/></clipPath><g clip-path="url(#s)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#t)" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></g></svg>'
+        };
+
+        let currentLanguage = 'ca';
+        let llibresObjectiu = []; // La llista correcta per al mode escollit
+        let llibresRestants = []; // Els llibres que falten per sortir barrejats
+        let llibreActual = null;  // El llibre que està actualment a la zona de "deck" (si anem un a un)
+        let absoluteBookIndex = 0; // Comptador per numerar els requadres buits
+        let isAllAtOnce = false;  // Variable global per saber l'estat del toggle
+
+        const canonStructure = {
+            at: [
+                { id: 'catPentateuch', count: 5, start: 0, end: 5 },
+                { id: 'catHistoricalOT', count: 12, start: 5, end: 17 },
+                { id: 'catPoetic', count: 5, start: 17, end: 22 },
+                { id: 'catProphets', count: 17, start: 22, end: 39 }
+            ],
+            nt: [
+                { id: 'catGospelsActs', count: 5, start: 0, end: 5 }, 
+                { id: 'catEpistles', count: 21, start: 5, end: 26 },   
+                { id: 'catRevelation', count: 1, start: 26, end: 27 }   
+            ]
+        };
+
+        // Referències al DOM
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const resultScreen = document.getElementById('result-screen');
+        
+        const booksLeftSpan = document.getElementById('books-left');
+        const deckZone = document.getElementById('deck-zone');
+        const sortableZone = document.getElementById('sortable-zone');
+        const submitBtn = document.getElementById('submit-btn');
+
+        function toggleLangMenuGlobal() {
+            document.getElementById('lang-menu-global').classList.toggle('hidden');
+        }
+
+        // Tancar el menú si es fa clic fora
+        window.addEventListener('click', function(e) {
+            const langBtnGlobal = document.getElementById('lang-btn-global');
+            const langMenuGlobal = document.getElementById('lang-menu-global');
+            
+            if (langBtnGlobal && !langBtnGlobal.contains(e.target)) {
+                langMenuGlobal.classList.add('hidden');
+            }
+        });
+
+        function changeLang(lang) {
+            const oldLanguage = currentLanguage;
+            currentLanguage = lang;
+            const texts = i18n[lang];
+            
+            // Actualitzar textos UI
+            document.getElementById('t-headerTitle').textContent = texts.headerTitle;
+            document.getElementById('t-welcome').textContent = texts.welcome;
+            document.getElementById('t-desc').textContent = texts.desc;
+            document.getElementById('t-btnAT').textContent = texts.btnAT;
+            document.getElementById('t-btnNT').textContent = texts.btnNT;
+            document.getElementById('t-btnAll').textContent = texts.btnAll;
+            document.getElementById('t-modePrefix').textContent = texts.modePrefix;
+            document.getElementById('t-booksLeft').textContent = texts.booksLeft;
+            document.getElementById('t-bookToPlace').textContent = texts.bookToPlace;
+            document.getElementById('t-sortHere').textContent = texts.sortHere;
+            document.getElementById('submit-btn').textContent = texts.submit;
+            document.getElementById('t-results').textContent = texts.results;
+            document.getElementById('t-details').textContent = texts.details;
+            document.getElementById('t-playAgain').textContent = texts.playAgain;
+            
+            document.getElementById('t-toggleOneByOne').textContent = texts.toggleOneByOne;
+            document.getElementById('t-toggleAll').textContent = texts.toggleAll;
+            document.getElementById('t-practiceCategories').textContent = texts.practiceCategories;
+
+            // Actualitzar botons de categories inferiors
+            const categoryBtns = document.querySelectorAll('[data-i18n-btn]');
+            categoryBtns.forEach(btn => {
+                const key = btn.getAttribute('data-i18n-btn');
+                if (texts[key]) btn.textContent = texts[key];
+            });
+
+            // Actualitzar botó selector Global (header)
+            document.getElementById('current-lang-code-global').textContent = lang.toUpperCase();
+            document.getElementById('current-flag-icon-global').innerHTML = flags[lang];
+            document.getElementById('lang-menu-global').classList.add('hidden');
+            
+            // Si estem a la pantalla de joc, actualitzar també els títols de les categories
+            if (gameScreen.style.display === 'flex') {
+                // Actualitzar el títol del mode actiu
+                const modeTitleElem = document.getElementById('mode-title-text');
+                const oldModeText = modeTitleElem.textContent;
+                
+                // Buscar la traducció equivalent per al títol del mode
+                for (const [key, value] of Object.entries(i18n[oldLanguage])) {
+                    if (value === oldModeText) {
+                        modeTitleElem.textContent = texts[key];
+                        break;
+                    }
+                }
+
+                // Actualitzar títols de les categories a la graella
+                const categoryTitles = document.querySelectorAll('.category-title');
+                categoryTitles.forEach(title => {
+                    const catId = title.dataset.catid;
+                    if (texts[catId]) title.textContent = texts[catId];
+                });
+
+                // TRADUIR LES TARGETES ACTIVES (deck i tauler)
+                const allCards = document.querySelectorAll('.draggable');
+                
+                // Mapatge dels llibres per poder traduir-los independentment de l'estat
+                const bookMap = {};
+                // Crear un diccionari del nom vell al nom nou (tant per AT com NT)
+                for (let i = 0; i < i18n[oldLanguage].at.length; i++) {
+                    bookMap[i18n[oldLanguage].at[i]] = texts.at[i];
+                }
+                for (let i = 0; i < i18n[oldLanguage].nt.length; i++) {
+                    bookMap[i18n[oldLanguage].nt[i]] = texts.nt[i];
+                }
+
+                // Aplicar la nova traducció a cada targeta que estigui en pantalla
+                allCards.forEach(card => {
+                    const oldName = card.dataset.name;
+                    const newName = bookMap[oldName];
+                    if (newName) {
+                        card.dataset.name = newName; // Actualitzar la data real
+                        card.querySelector('span').textContent = newName; // Actualitzar el text visible
+                        
+                        // Si estem en mode "un a un" i aquesta és la llibreActual, cal assegurar-se que
+                        // la variable s'actualitzi si és necessari (encara que treballa amb nodes DOM, és millor per consistència)
+                    }
+                });
+
+                // També cal traduir els llibres restants que encara no han sortit (la "baralla" interna)
+                if (llibresRestants.length > 0) {
+                    llibresRestants = llibresRestants.map(oldName => bookMap[oldName]);
+                }
+                
+                // I traduir la llista objectiu (la que fem servir per validar a checkOrder)
+                if (llibresObjectiu.length > 0) {
+                    llibresObjectiu = llibresObjectiu.map(oldName => bookMap[oldName]);
+                }
+                
+                // Comprovar de nou si estan tots per actualitzar el botó enviar si cal
+                comprovarTotsColocats();
+
+            } else {
+                // Si estem al start-screen no cal traduir llibres en joc
+                resetGame();
+            }
+        }
+
+        function startGame(mode) {
+            const texts = i18n[currentLanguage];
+            let modeText = "";
+            let structureToUse = [];
+            
+            // Llegir l'estat del toggle
+            isAllAtOnce = document.getElementById('mode-toggle').checked;
+
+            // Configurar el mode i determinar quines categories renderitzar
+            if (mode === 'at') {
+                llibresObjectiu = [...texts.at];
+                modeText = texts.btnAT;
+                structureToUse = canonStructure.at;
+            } else if (mode === 'nt') {
+                llibresObjectiu = [...texts.nt];
+                modeText = texts.btnNT;
+                structureToUse = canonStructure.nt;
+            } else if (mode === 'all') {
+                llibresObjectiu = [...texts.at, ...texts.nt];
+                modeText = texts.btnAll;
+                structureToUse = [...canonStructure.at, ...canonStructure.nt];
+            } else {
+                const categoryId = mode;
+                let foundCat = null;
+                let isAT = false;
+                
+                // Buscar a quin testament pertany la categoria
+                canonStructure.at.forEach(c => { if(c.id === categoryId) { foundCat = c; isAT = true; } });
+                canonStructure.nt.forEach(c => { if(c.id === categoryId) { foundCat = c; isAT = false; } });
+                
+                if (foundCat) {
+                    modeText = texts[foundCat.id];
+                    structureToUse = [foundCat];
+                    const sourceArray = isAT ? texts.at : texts.nt;
+                    llibresObjectiu = sourceArray.slice(foundCat.start, foundCat.end);
+                }
+            }
+            
+            document.getElementById('mode-title-text').textContent = modeText;
+
+            // Preparar llibres barrejats
+            llibresRestants = barrejarArray([...llibresObjectiu]);
+            
+            // Netejar la interfície
+            sortableZone.innerHTML = '';
+            deckZone.innerHTML = '';
+            
+            // Construir els requadres buits basats en la canonStructure
+            absoluteBookIndex = 0;
+            structureToUse.forEach(cat => {
+                const catContainer = document.createElement('div');
+                catContainer.className = 'mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-200 shadow-sm';
+                
+                // Títol de la categoria
+                const catTitle = document.createElement('h5');
+                catTitle.className = 'category-title text-indigo-800 font-bold mb-3 uppercase tracking-wide text-xs md:text-sm border-b border-indigo-200 pb-1';
+                catTitle.dataset.catid = cat.id;
+                catTitle.textContent = texts[cat.id];
+                catContainer.appendChild(catTitle);
+
+                // Graella responsiva
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3';
+
+                // Generar els requadres buits (slots) per a cada llibre de la categoria
+                for (let i = 0; i < cat.count; i++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'slot bg-white border-2 border-dashed border-gray-300 rounded-lg h-16 md:h-20 flex items-center justify-center';
+                    slot.dataset.index = absoluteBookIndex;
+                    
+                    // Afegir número indicatiu molt discret al fons
+                    const numSpan = document.createElement('span');
+                    numSpan.className = 'slot-number';
+                    numSpan.textContent = `#${absoluteBookIndex + 1}`;
+                    slot.appendChild(numSpan);
+                    
+                    // Configurar events pel slot
+                    setupSlotEvents(slot);
+
+                    grid.appendChild(slot);
+                    absoluteBookIndex++;
+                }
+                
+                catContainer.appendChild(grid);
+                sortableZone.appendChild(catContainer);
+            });
+            
+            // Mostrar/Amagar pantalles
+            startScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            gameScreen.style.display = 'flex';
+            
+            // Actualitzar UI inicial
+            actualitzarComptador();
+            submitBtn.disabled = true; // Desactivar fins que s'hagin posat tots
+            
+            // Començar a treure llibres segons el mode triat
+            if (isAllAtOnce) {
+                omplirDeckTotAlhora();
+            } else {
+                treureNouLlibre();
+            }
+        }
+
+        function barrejarArray(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function crearTargetaLlibre(llibreNom) {
+            const bookCard = document.createElement('div');
+            // Eliminem l'h-full i w-full en línia per controlar-ho millor per CSS depenent d'on estigui
+            bookCard.className = 'draggable bg-gradient-to-br from-indigo-100 to-blue-50 border border-indigo-300 text-indigo-900 font-bold rounded shadow-sm hover:shadow-md transition-shadow animate-fade-in card-content cursor-grab active:cursor-grabbing relative flex items-center justify-center p-1.5';
+            bookCard.setAttribute('draggable', 'true');
+            bookCard.dataset.name = llibreNom;
+            
+            const textSpan = document.createElement('span');
+            textSpan.textContent = llibreNom;
+            // Eliminem el truncate i posem text responsiu amb word-break perquè mai es talli la paraula
+            textSpan.className = 'pointer-events-none drop-shadow-sm text-xs md:text-sm leading-tight text-center break-words w-full';
+            bookCard.appendChild(textSpan);
+            
+            addDragEvents(bookCard);
+            return bookCard;
+        }
+
+        // Mode: Tots alhora
+        function omplirDeckTotAlhora() {
+            deckZone.innerHTML = '';
+            while (llibresRestants.length > 0) {
+                const llibreNom = llibresRestants.pop();
+                const bookCard = crearTargetaLlibre(llibreNom);
+                deckZone.appendChild(bookCard);
+            }
+            actualitzarComptador();
+        }
+
+        // Mode: Un a un
+        function treureNouLlibre() {
+            if (llibresRestants.length > 0) {
+                const llibreNom = llibresRestants.pop(); // Agafar-ne un de la llista barrejada
+                actualitzarComptador();
+                
+                const bookCard = crearTargetaLlibre(llibreNom);
+
+                // Posar-lo a la zona del "deck"
+                deckZone.innerHTML = ''; // Assegurar que estigui net abans
+                deckZone.appendChild(bookCard);
+                llibreActual = bookCard;
+            } else {
+                deckZone.innerHTML = `<span class="text-gray-400 italic text-sm font-medium text-center">${i18n[currentLanguage].noMoreBooks}</span>`;
+            }
+        }
+
+        function actualitzarComptador() {
+            booksLeftSpan.textContent = llibresRestants.length;
+        }
+
+        let draggedItem = null;
+        let sourceContainer = null;
+
+        function addDragEvents(item) {
+            item.addEventListener('dragstart', function(e) {
+                draggedItem = item;
+                sourceContainer = item.parentElement;
+                setTimeout(() => item.classList.add('dragging'), 0);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', item.dataset.name);
+            });
+
+            item.addEventListener('dragend', function() {
+                setTimeout(() => {
+                    draggedItem.classList.remove('dragging');
+                    draggedItem = null;
+                    sourceContainer = null;
+                }, 0);
+            });
+        }
+
+        function setupSlotEvents(slot) {
+            slot.addEventListener('dragover', function(e) {
+                e.preventDefault(); 
+                e.dataTransfer.dropEffect = 'move';
+                this.classList.add('drag-over');
+            });
+
+            slot.addEventListener('dragleave', function(e) {
+                this.classList.remove('drag-over');
+            });
+
+            slot.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('drag-over');
+                
+                if (!draggedItem) return;
+
+                const existingBook = this.querySelector('.draggable');
+
+                if (existingBook) {
+                    // Si ja hi ha un llibre en aquest requadre
+                    if (sourceContainer.id === 'deck-zone') {
+                        // Si venia del deck, intercanviem (només en un a un!)
+                        if (!isAllAtOnce) {
+                            sourceContainer.innerHTML = '';
+                            sourceContainer.appendChild(existingBook);
+                            llibreActual = existingBook;
+                        } else {
+                            sourceContainer.appendChild(existingBook);
+                        }
+                    } else {
+                        // Si ve d'un altre slot, els intercanviem
+                        sourceContainer.appendChild(existingBook);
+                    }
+                } else {
+                    // Si el requadre estava buit i venia del deck, robem nova carta automàticament
+                    if (sourceContainer.id === 'deck-zone' && !isAllAtOnce) {
+                        llibreActual = null;
+                        setTimeout(() => treureNouLlibre(), 50);
+                    }
+                }
+                
+                // Finalment, col·loquem el llibre arrossegat al nou requadre
+                this.appendChild(draggedItem);
+                comprovarTotsColocats();
+            });
+        }
+
+        // Drop zone especial per si volen retornar el llibre a la baralla (Deck)
+        deckZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('bg-gray-200');
+        });
+
+        deckZone.addEventListener('dragleave', function(e) {
+            this.classList.remove('bg-gray-200');
+        });
+
+        deckZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('bg-gray-200');
+            
+            if (!draggedItem || sourceContainer.id === 'deck-zone') return;
+
+            if (isAllAtOnce) {
+                // En mode tots alhora, simplement el retornem al contenidor
+                this.appendChild(draggedItem);
+            } else {
+                // En mode un a un, si ja hi havia una carta, la retornem al slot d'on venia
+                const existingBook = this.querySelector('.draggable');
+                if (existingBook) {
+                    sourceContainer.appendChild(existingBook);
+                }
+                this.appendChild(draggedItem);
+                llibreActual = draggedItem;
+            }
+            
+            comprovarTotsColocats();
+        });
+
+        function comprovarTotsColocats() {
+            const allSlots = document.querySelectorAll('.slot');
+            let occupied = 0;
+            allSlots.forEach(s => { if (s.querySelector('.draggable')) occupied++; });
+            
+            // Habilitem si hi ha tants llibres posats com llibres hi ha al mode de joc actual
+            if (occupied === llibresObjectiu.length) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                submitBtn.classList.add('animate-pulse'); // Crida l'atenció quan s'acaba
+                setTimeout(() => submitBtn.classList.remove('animate-pulse'), 1500);
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function checkOrder() {
+            const allSlots = document.querySelectorAll('.slot');
+            
+            let encerts = 0;
+            const resultListUl = document.getElementById('result-list');
+            resultListUl.innerHTML = ''; 
+            const texts = i18n[currentLanguage];
+
+            // Comprovar requadre per requadre
+            allSlots.forEach((slot, i) => {
+                const llibreCorrecte = llibresObjectiu[i];
+                const nodeFill = slot.querySelector('.draggable');
+                const llibreUsuari = nodeFill ? nodeFill.dataset.name : null;
+                
+                const li = document.createElement('li');
+                li.className = 'py-2 flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 last:border-0';
+                
+                if (llibreUsuari === llibreCorrecte) {
+                    encerts++;
+                    li.innerHTML = `
+                        <span class="text-green-700 font-medium text-sm sm:text-base">
+                            ${i+1}. ${llibreUsuari} 
+                        </span>
+                        <span class="text-green-600 font-bold sm:ml-2 text-sm sm:text-base">${texts.correct}</span>`;
+                } else {
+                    const textUsuari = llibreUsuari ? llibreUsuari : `<span class="text-gray-400 italic">${texts.missing}</span>`;
+                    li.innerHTML = `
+                        <span class="text-red-600 line-through text-sm sm:text-base mb-1 sm:mb-0">
+                            ${i+1}. ${textUsuari}
+                        </span>
+                        <span class="text-gray-600 font-medium text-sm sm:text-base">
+                            ${texts.shouldBe} <strong class="text-indigo-600 ml-1">${llibreCorrecte}</strong>
+                        </span>`;
+                }
+                resultListUl.appendChild(li);
+            });
+
+            // Mostrar puntuació
+            const scoreText = document.getElementById('score-text');
+            scoreText.textContent = `${encerts}/${llibresObjectiu.length}`;
+            
+            const feedbackMsg = document.getElementById('feedback-message');
+            const percentatge = (encerts / llibresObjectiu.length) * 100;
+            
+            if (percentatge === 100) {
+                feedbackMsg.textContent = texts.fbPerfect;
+                feedbackMsg.className = "text-xl mb-6 font-bold text-green-600";
+            } else if (percentatge >= 70) {
+                feedbackMsg.textContent = texts.fbGood;
+                feedbackMsg.className = "text-xl mb-6 font-medium text-blue-600";
+            } else if (percentatge >= 40) {
+                feedbackMsg.textContent = texts.fbOk;
+                feedbackMsg.className = "text-xl mb-6 font-medium text-yellow-600";
+            } else {
+                feedbackMsg.textContent = texts.fbBad;
+                feedbackMsg.className = "text-xl mb-6 font-medium text-red-600";
+            }
+
+            // Canviar de pantalla
+            gameScreen.style.display = 'none';
+            resultScreen.style.display = 'block';
+            resultScreen.classList.add('animate-fade-in');
+        }
+
+        function resetGame() {
+            resultScreen.style.display = 'none';
+            gameScreen.style.display = 'none';
+            startScreen.style.display = 'block';
+            startScreen.classList.add('animate-fade-in');
+        }
+
+    </script>
+</body>
+</html>
